@@ -177,6 +177,11 @@ async function boot(){
       return; // 再度subscribeが発火する
     }
     state.brands = sortBrands(brands);
+    // ブランド一覧の読み込みより先にレポート画面へ直接遷移した場合に備えて、
+    // まだ購読できていなければここで改めて購読する
+    if (state.view === "platform" && !state.reportsUnsub){
+      subscribeReports();
+    }
     render();
   });
 
@@ -783,9 +788,24 @@ function printReport(){
       <div class="p-kpi"><div class="l">総閲覧数</div><div class="v">${fmtNum(report.views)}</div></div>
       <div class="p-kpi"><div class="l">エンゲージメント率</div><div class="v">${eng===null?"ー":eng.toFixed(2)+"%"}</div></div>
     </div>
+    ${printItemGridHtml("今月の投稿", state.postHighlights.map(it => {
+      const eng = it.views ? (it.interactions/it.views*100) : null;
+      return { image: it.imageData, title: it.title, sub: `閲覧数 ${fmtNum(it.views)}／Int. ${fmtNum(it.interactions)}／Eng率 ${eng===null?"ー":eng.toFixed(1)+"%"}`, tall:false };
+    }))}
+    ${printItemGridHtml("完成見学会などイベントのリンククリック数", [...state.linkClicks].sort((a,b)=>b.clickCount-a.clickCount).map(it => ({ image: it.imageData, title: it.title, sub: `${it.clickCount}件`, tall:true })))}
     <div class="p-section"><h3>まとめ・メモ</h3><div>${esc(report.notes||"（記載なし）")}</div></div>
   `;
   window.print();
+}
+
+function printItemGridHtml(title, items){
+  if (!items || items.length===0) return "";
+  const cards = items.map(it => `<div class="p-card">
+      ${it.image ? `<img class="${it.tall?"tall":""}" src="${it.image}" alt="${esc(it.title)}">` : `<img alt="" style="background:#f2f2f2">`}
+      <div class="t">${esc(it.title)}</div>
+      <div class="s">${esc(it.sub)}</div>
+    </div>`).join("");
+  return `<div class="p-section"><h3>${esc(title)}</h3><div class="p-grid">${cards}</div></div>`;
 }
 
 boot();
