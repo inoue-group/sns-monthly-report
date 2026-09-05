@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>INOUE-GROUP SNS MONTHLY REPORT</title>
+<link rel="icon" type="image/jpeg" href="assets/favicon.jpg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet" />
+
+<!-- Firebase (未設定ならローカル demo モードで動きます) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* =========================================================================
+   ▼▼▼ クラウド共有（全端末でデータ共有）を有効にするには、ここに
+       Firebase ウェブアプリの設定を貼り付けてください。
+       手順は同じフォルダの「セットアップ手順.md」を参照。
+       未設定のあいだは、このブラウザだけに保存される demo モードで動作します。
+   ========================================================================= */
+window.SNS_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyC9A_hAev_s9KlGLeFQk-s467GrAg0RGKQ",
+  authDomain: "sns-report-3205a.firebaseapp.com",
+  projectId: "sns-report-3205a",
+  storageBucket: "sns-report-3205a.firebasestorage.app",
+  messagingSenderId: "162149566367",
+  appId: "1:162149566367:web:396b6fa48c01623baadfaa"
+};
+</script>
+
+<style>
+  :root{
+    --bg:#f4f5f7; --panel:#ffffff; --panel-2:#fafbfc; --ink:#1f2430; --ink-soft:#5b6472;
+    --line:#e3e6eb; --line-strong:#cdd2da; --accent:#F39800; --accent-soft:#fdf1dc;
+    --accent-ink:#a4650b; --ok:#16a34a; --warn:#d97706; --danger:#dc2626;
+    --chip:#eef1f5; --shadow:0 1px 2px rgba(20,26,38,.06),0 6px 18px rgba(20,26,38,.06);
+    --radius:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12151b; --panel:#1b1f27; --panel-2:#20242d; --ink:#e8eaee; --ink-soft:#9aa3b1;
+      --line:#2c313b; --line-strong:#3a414d; --accent-soft:#332a1a;
+      --accent-ink:#f0c176; --chip:#262b34; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 22px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#12151b; --panel:#1b1f27; --panel-2:#20242d; --ink:#e8eaee; --ink-soft:#9aa3b1;
+    --line:#2c313b; --line-strong:#3a414d; --accent-soft:#332a1a;
+    --accent-ink:#f0c176; --chip:#262b34; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 22px rgba(0,0,0,.28);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic UI",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.6; -webkit-text-size-adjust:100%;
+  }
+  a{color:var(--accent-ink); text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1,h2,h3{margin:0; font-weight:700}
+  button{font-family:inherit}
+  img{max-width:100%}
+
+  .appbar{position:sticky; top:0; z-index:20; background:var(--panel); border-bottom:1px solid var(--line); box-shadow:var(--shadow)}
+  .appbar-in{max-width:1180px; margin:0 auto; padding:10px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .brand{display:flex; align-items:center; gap:10px; margin-right:auto; cursor:pointer}
+  .brand b{font-size:15px; letter-spacing:.01em}
+  .brand span{display:block; font-size:11px; color:var(--ink-soft); font-weight:500; letter-spacing:.03em}
+  .mode{font-size:11px; font-weight:700; padding:4px 9px; border-radius:999px; border:1px solid var(--line-strong); color:var(--ink-soft); white-space:nowrap}
+  .mode.cloud{color:var(--ok); border-color:color-mix(in srgb, var(--ok) 40%, var(--line))}
+  .icon-btn{border:1px solid var(--line-strong); background:var(--panel-2); color:var(--ink); font-weight:700; font-size:13px; padding:7px 11px; border-radius:10px; cursor:pointer}
+  .icon-btn:hover{border-color:var(--accent)}
+
+  main{max-width:1180px; margin:0 auto; padding:16px}
+  .banner{margin:12px auto 0; max-width:1180px; padding:10px 14px; border-radius:12px; font-size:13px;
+    display:flex; align-items:flex-start; gap:12px;
+    background:var(--accent-soft); color:var(--accent-ink); border:1px solid color-mix(in srgb,var(--accent) 30%, var(--line))}
+  .banner .x{flex:none; background:transparent; border:0; color:inherit; font-size:18px; line-height:1; cursor:pointer; padding:0 2px; opacity:.55}
+  .banner.err{background:color-mix(in srgb,var(--danger) 12%,transparent); color:var(--danger); border-color:color-mix(in srgb,var(--danger) 35%,var(--line))}
+  .banner.hide{display:none}
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; margin-bottom:16px}
+  .panel h2{font-size:15px; margin-bottom:4px}
+  .panel .sub{color:var(--ink-soft); font-size:12px; margin-bottom:12px}
+
+  .row{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end}
+  .fld{display:flex; flex-direction:column; gap:4px; min-width:150px}
+  .fld label{font-size:11px; font-weight:700; color:var(--ink-soft)}
+  input,select,textarea{font-family:inherit; font-size:14px; color:var(--ink); background:var(--panel-2); border:1px solid var(--line-strong); border-radius:10px; padding:8px 10px; width:100%}
+  input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent); outline-offset:1px}
+  textarea{resize:vertical; min-height:60px}
+  input[type=color]{padding:2px; width:44px; height:34px}
+  input[type=file]{padding:4px}
+
+  .btn{border:1px solid var(--line-strong); background:var(--panel-2); color:var(--ink); font-weight:700; font-size:13px; padding:9px 16px; border-radius:10px; cursor:pointer}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  .btn.sm{padding:5px 10px; font-size:12px; border-radius:8px}
+  .btn.danger{color:var(--danger); border-color:color-mix(in srgb,var(--danger) 35%,var(--line))}
+  .btn:disabled{opacity:.5; cursor:not-allowed}
+
+  .brand-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; margin-bottom:20px}
+  .brand-card{display:block; background:var(--panel); border:1px solid var(--line); border-radius:16px; overflow:hidden; box-shadow:var(--shadow); cursor:pointer; transition:transform .15s}
+  .brand-card:hover{transform:translateY(-2px)}
+  .brand-card .logo{height:96px; width:100%; display:flex; align-items:center; justify-content:center; background:#fff; padding:12px}
+  .brand-card .logo img{max-height:100%; max-width:100%; object-fit:contain}
+  .brand-card .logo.fallback{color:#fff; font-weight:900; font-size:20px}
+  .brand-card .bc-body{padding:14px 16px}
+  .brand-card .bc-body b{font-size:16px}
+  .brand-card .bc-body p{margin:4px 0 0; font-size:12px; color:var(--ink-soft)}
+
+  .platform-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px}
+  .platform-card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:var(--shadow); cursor:pointer}
+  .platform-card:hover{border-color:var(--accent)}
+  .platform-card .ph-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px}
+  .platform-card .ph-name{display:flex; align-items:center; gap:8px; font-weight:700}
+  .platform-card .ph-date{font-size:11px; color:var(--ink-soft)}
+  .platform-card .ph-value{font-size:26px; font-weight:900}
+  .platform-card .ph-label{font-size:11px; color:var(--ink-soft)}
+
+  .kpi-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px}
+  .kpi{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px}
+  .kpi .k-label{font-size:11px; color:var(--ink-soft); font-weight:700}
+  .kpi .k-value{font-size:22px; font-weight:900; margin-top:2px}
+  .delta{display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; margin-top:6px}
+  .delta.up{background:color-mix(in srgb, var(--ok) 15%, transparent); color:var(--ok)}
+  .delta.down{background:color-mix(in srgb, var(--danger) 15%, transparent); color:var(--danger)}
+  .delta.flat, .delta.none{background:var(--chip); color:var(--ink-soft)}
+
+  .chart-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px}
+  .chart-box{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; box-shadow:var(--shadow)}
+  .chart-box .ct-title{font-size:12px; font-weight:700; color:var(--ink-soft); margin-bottom:8px}
+  .donut-row{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+  .donut-cell{text-align:center}
+  .donut-cell .dt{font-size:11px; color:var(--ink-soft); margin-bottom:4px}
+  .legend{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; font-size:11px; margin-top:4px}
+  .legend span{display:inline-flex; align-items:center; gap:4px}
+  .legend i{width:9px; height:9px; border-radius:2px; display:inline-block}
+
+  .item-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:12px; margin-bottom:14px}
+  .item-card{text-align:center; font-size:12px}
+  .item-thumb{width:100%; aspect-ratio:1/1; border-radius:10px; background:var(--chip); object-fit:cover; display:block; margin-bottom:4px}
+  .item-thumb.tall{aspect-ratio:9/16}
+  .item-title{font-weight:700}
+  .item-sub{color:var(--ink-soft)}
+
+  .tabbar{display:flex; gap:6px; margin-bottom:14px}
+  .tabbar button{border:1px solid var(--line); background:var(--panel); color:var(--ink-soft); padding:8px 16px; border-radius:999px; font-size:13px; font-weight:700; cursor:pointer}
+  .tabbar button.on{background:var(--accent); border-color:var(--accent); color:#fff}
+
+  .glossary-row{display:flex; border-bottom:1px solid var(--line)}
+  .glossary-row:last-child{border-bottom:0}
+  .glossary-idx{width:36px; flex:none; background:var(--panel-2); border-right:1px solid var(--line); display:flex; align-items:flex-start; justify-content:center; padding-top:14px; font-weight:700; color:var(--ink-soft); font-size:13px}
+  .glossary-list{flex:1}
+  .glossary-item{padding:12px 14px; border-bottom:1px solid var(--line)}
+  .glossary-item:last-child{border-bottom:0}
+  .glossary-item b{font-size:13px}
+  .glossary-item p{margin:4px 0 0; font-size:12px; color:var(--ink-soft)}
+
+  .fab-video{position:fixed; inset:0; z-index:-1; overflow:hidden}
+  .fab-video video{width:100%; height:100%; object-fit:cover; opacity:.45}
+
+  .no-print{}
+  #printArea{display:none}
+
+  @media (max-width:640px){
+    .row{flex-direction:column; align-items:stretch}
+    .fld{min-width:0}
+    .donut-row{grid-template-columns:1fr}
+    main{padding:12px}
+    .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  }
+
+  @media print{
+    @page{ size:A4 portrait; margin:12mm }
+    html,body{ background:#fff }
+    body > *:not(#printArea){ display:none !important }
+    .fab-video{ display:none !important }
+    #printArea{ display:block !important; color:#000 }
+    #printArea .p-h1{ font-size:18px; font-weight:900; margin-bottom:2px }
+    #printArea .p-h2{ font-size:12px; color:#555; margin-bottom:14px }
+    #printArea .p-kpis{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:14px }
+    #printArea .p-kpi{ border:1px solid #ccc; border-radius:6px; padding:8px }
+    #printArea .p-kpi .l{ font-size:9px; color:#666 }
+    #printArea .p-kpi .v{ font-size:15px; font-weight:800 }
+    #printArea .p-section{ margin-bottom:14px; break-inside:avoid }
+    #printArea .p-section h3{ font-size:12px; border-left:3px solid #999; padding-left:6px; margin-bottom:6px }
+  }
+</style>
+</head>
+<body>
+
+<div class="fab-video" id="fabVideo" style="display:none">
+  <video autoplay loop muted playsinline>
+    <source src="assets/top-background.mp4" type="video/mp4" />
+  </video>
+</div>
+
+<header class="appbar no-print">
+  <div class="appbar-in">
+    <div class="brand" id="brandHome">
+      <div>
+        <b>INOUE-GROUP SNS MONTHLY REPORT</b>
+        <span>いのうえグループ SNS月次レポート</span>
+      </div>
+    </div>
+    <div class="mode" id="modeTag">…</div>
+    <button class="icon-btn" id="themeToggle" title="ライト/ダーク切り替え">🌓</button>
+  </div>
+</header>
+
+<div class="banner hide" id="banner"><div class="banner-msg" id="bannerMsg"></div><button class="x" id="bannerX">×</button></div>
+
+<main id="app"></main>
+
+<div id="printArea"></div>
+
+<script>
+"use strict";
+
+/* =========================================================================
+   1. DB抽象化：Firebase設定があればFirestore、なければブラウザ内demoモード
+   ========================================================================= */
+const DB = (function(){
+  const cfg = window.SNS_FIREBASE_CONFIG || {};
+  const hasFirebase = !!(cfg.apiKey && cfg.projectId);
+
+  if (hasFirebase){
+    firebase.initializeApp(cfg);
+    const fdb = firebase.firestore();
+    return {
+      mode: "cloud",
+      projectId: cfg.projectId,
+      subscribe(path, cb){
+        return docOrCol(fdb, path).onSnapshot(
+          snap => cb(snapToData(snap)),
+          err => { console.error(err); showBanner("クラウドに接続できません: " + err.message, "err"); }
+        );
+      },
+      async get(path){ return snapToData(await docOrCol(fdb, path).get()); },
+      async set(path, data){ return fdb.doc(path).set(data); },
+      async merge(path, data){ return fdb.doc(path).set(data, { merge:true }); },
+      async add(path, data){ const ref = await fdb.collection(path).add(data); return ref.id; },
+      async remove(path){ return fdb.doc(path).delete(); }
+    };
+  }
+
+  // ---- demo mode: localStorage + BroadcastChannel でタブ間同期 ----
+  const KEY = "sns_report_demo_v1";
+  let mem = load();
+  function load(){ try{ const r = localStorage.getItem(KEY); return r ? JSON.parse(r) : {}; }catch(e){ return {}; } }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(mem)); }catch(e){} if(ch) try{ ch.postMessage(1); }catch(e){} }
+  let ch = null;
+  try{ ch = new BroadcastChannel("sns_report_demo"); ch.onmessage = () => { mem = load(); notifyAll(); }; }catch(e){}
+
+  const listeners = {}; // path -> Set(cb)
+  function notifyAll(){ Object.keys(listeners).forEach(p => listeners[p].forEach(cb => cb(readPath(p)))); }
+  function readPath(path){
+    const parts = path.split("/");
+    if (parts.length % 2 === 0){ // doc path
+      let node = mem;
+      for(const p of parts) node = (node && node[p]) || undefined;
+      return node ? { id: parts[parts.length-1], ...node } : null;
+    } else { // collection path
+      let node = mem;
+      for(const p of parts) node = (node && node[p]) || undefined;
+      if (!node) return [];
+      return Object.keys(node).map(id => ({ id, ...node[id] }));
+    }
+  }
+  function writeDoc(path, data, merge){
+    const parts = path.split("/");
+    let node = mem;
+    for(let i=0;i<parts.length-1;i++){ node[parts[i]] = node[parts[i]] || {}; node = node[parts[i]]; }
+    const key = parts[parts.length-1];
+    node[key] = merge ? { ...(node[key]||{}), ...data } : data;
+    save();
+  }
+  function removeDoc(path){
+    const parts = path.split("/");
+    let node = mem;
+    for(let i=0;i<parts.length-1;i++){ node = node && node[parts[i]]; if(!node) return; }
+    if (node) delete node[parts[parts.length-1]];
+    save();
+  }
+
+  return {
+    mode: "demo",
+    subscribe(path, cb){
+      listeners[path] = listeners[path] || new Set();
+      listeners[path].add(cb);
+      cb(readPath(path));
+      return () => listeners[path].delete(cb);
+    },
+    async get(path){ return readPath(path); },
+    async set(path, data){ writeDoc(path, data, false); notifyAll(); },
+    async merge(path, data){ writeDoc(path, data, true); notifyAll(); },
+    async add(path, data){ const id = "id" + Date.now() + Math.random().toString(36).slice(2,8); writeDoc(path + "/" + id, data, false); notifyAll(); return id; },
+    async remove(path){ removeDoc(path); notifyAll(); }
+  };
+
+  function docOrCol(fdb, path){
+    const parts = path.split("/");
+    return parts.length % 2 === 0 ? fdb.doc(path) : fdb.collection(path);
+  }
+  function snapToData(snap){
+    if (snap.docs){ return snap.docs.map(d => ({ id: d.id, ...d.data() })); }
+    return snap.exists ? { id: snap.id, ...snap.data() } : null;
+  }
+})();
+
+function showBanner(msg, kind){
+  const b = document.getElementById("banner");
+  document.getElementById("bannerMsg").textContent = msg;
+  b.className = "banner no-print" + (kind === "err" ? " err" : "");
+}
+document.getElementById("bannerX").onclick = () => document.getElementById("banner").classList.add("hide");
+
+document.getElementById("modeTag").textContent = DB.mode === "cloud" ? ("● クラウド同期中 (" + DB.projectId + ")") : "○ ローカル demo モード";
+if (DB.mode === "cloud") document.getElementById("modeTag").classList.add("cloud");
+</script>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+# 移行時の一時ファイル（実データのバックアップ。Gitには含めない）
+firestore-import.json
