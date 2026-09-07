@@ -266,11 +266,16 @@ function render(){
 function renderHome(){
   const cards = state.brands.map(b => {
     const logo = BRAND_LOGOS[b.id];
+    const icons = b.platforms.map(p => platformIconSvg(p, 20)).join("");
     return `<a class="brand-card" href="#/b/${esc(b.id)}">
       <div class="logo${logo?"":" fallback"}" style="${logo?"":"background:"+esc(b.color)}">
         ${logo ? `<img src="${esc(logo)}" alt="${esc(b.name)}" />` : esc(b.name)}
       </div>
-      <div class="bc-body"><b>${esc(b.name)}</b><p>SNS月次レポートを見る</p></div>
+      <div class="bc-body">
+        <b>${esc(b.name)}</b>
+        <div class="bc-platforms">${icons}</div>
+        <p>SNS月次レポートを見る</p>
+      </div>
     </a>`;
   }).join("");
 
