@@ -68,10 +68,8 @@ function previousMonthOf(y,m){ return m===1 ? {year:y-1, month:12} : {year:y, mo
 function ymStr(y,m){ return y + "-" + String(m).padStart(2,"0"); }
 function parseYm(s){ const [y,m] = String(s).split("-").map(Number); return {year:y, month:m}; }
 function defaultTrendRange(){
-  const endY = state.year, endM = state.month;
-  let sy = endY, sm = endM - 11;
-  while (sm <= 0){ sm += 12; sy -= 1; }
-  return { start: ymStr(sy, sm), end: ymStr(endY, endM) };
+  const now = new Date();
+  return { start: ymStr(now.getFullYear(), 1), end: ymStr(now.getFullYear(), now.getMonth()+1) };
 }
 function monthRange(startYm, endYm){
   let s = parseYm(startYm), e = parseYm(endYm);
@@ -104,6 +102,18 @@ function lighten(hex, amount){
   const mix = ch => Math.round(ch + (255-ch)*amount);
   const h = v => v.toString(16).padStart(2,"0");
   return `#${h(mix(r))}${h(mix(g))}${h(mix(b))}`;
+}
+function wireChartTooltip(){
+  const tip = document.getElementById("chartTooltip");
+  document.addEventListener("mousemove", (e) => {
+    const t = e.target.closest && e.target.closest("[data-tip]");
+    if (!t){ tip.hidden = true; return; }
+    tip.innerHTML = t.dataset.tip;
+    tip.style.left = (e.clientX + 12) + "px";
+    tip.style.top = (e.clientY + 12) + "px";
+    tip.hidden = false;
+  });
+  document.addEventListener("mouseleave", () => { tip.hidden = true; });
 }
 function fileToDataUrl(file, max, q){
   max = max || 480; q = q || 0.75;
@@ -199,6 +209,7 @@ async function boot(){
   document.getElementById("themeToggle").onclick = toggleTheme;
   document.getElementById("brandHome").onclick = () => navigate("/");
   window.addEventListener("hashchange", syncRouteFromHash);
+  wireChartTooltip();
 
   DB.subscribe("brands", async (brands) => {
     if (!brands || brands.length === 0){
@@ -367,7 +378,8 @@ function svgLineChart(data, color, yTickStep){
     if (d.value===null || d.value===undefined) return;
     const px=x(i), py=y(d.value);
     path += (path===""?"M":"L") + px.toFixed(1) + " " + py.toFixed(1) + " ";
-    dots += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3.5" fill="${color}"/>`;
+    const tipHtml = `<b>${esc(d.label)}</b><br>${fmtNum(d.value)}`;
+    dots += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="8" fill="transparent" data-tip="${esc(tipHtml)}"/><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3.5" fill="${color}" pointer-events="none"/>`;
   });
   const gridLines = [0,0.25,0.5,0.75,1].map(t => {
     const gy = padT + (h-padT-padB)*t;
@@ -389,13 +401,19 @@ function svgYoYLineChart(dataCurrent, dataPrev, currentColor, prevColor, current
   const n = dataCurrent.length;
   const x = i => padL + (w-padL-padR) * (n<=1?0:i/(n-1));
   const y = v => padT + (h-padT-padB) * (1 - (v-min)/(max-min));
-  function buildLine(data, color){
+  function buildLine(data, color, pairData, pairLabel){
     let path = "", dots = "";
     data.forEach((d,i) => {
       if (d.value===null || d.value===undefined) return;
       const px=x(i), py=y(d.value);
       path += (path===""?"M":"L") + px.toFixed(1) + " " + py.toFixed(1) + " ";
-      dots += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3.5" fill="${color}"/>`;
+      let tipHtml = `<b>${esc(d.label)}</b><br>${fmtNum(d.value)}`;
+      const pv = pairData && pairData[i] ? pairData[i].value : null;
+      if (pv!==null && pv!==undefined){
+        tipHtml += `<br>${esc(pairLabel)}：${fmtNum(pv)}`;
+        if (pv!==0){ const pct = (d.value-pv)/pv*100; tipHtml += `（${pct>0?"+":""}${pct.toFixed(1)}%）`; }
+      }
+      dots += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="8" fill="transparent" data-tip="${esc(tipHtml)}"/><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3.5" fill="${color}" pointer-events="none"/>`;
     });
     return `<path d="${path}" fill="none" stroke="${color}" stroke-width="2"/>${dots}`;
   }
@@ -405,7 +423,7 @@ function svgYoYLineChart(dataCurrent, dataPrev, currentColor, prevColor, current
     return `<line x1="${padL}" y1="${gy}" x2="${w-padR}" y2="${gy}" stroke="currentColor" stroke-opacity="0.08"/><text x="${padL-6}" y="${gy+3}" font-size="9" text-anchor="end" fill="currentColor" opacity="0.5">${fmtNum(Math.round(val))}</text>`;
   }).join("");
   const labels = dataCurrent.map((d,i) => (i%Math.ceil(n/6||1)===0) ? `<text x="${x(i)}" y="${h-6}" font-size="9" text-anchor="middle" fill="currentColor" opacity="0.5">${esc(d.label)}</text>` : "").join("");
-  const svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:180px">${gridLines}${labels}${buildLine(dataPrev, prevColor)}${buildLine(dataCurrent, currentColor)}</svg>`;
+  const svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:180px">${gridLines}${labels}${buildLine(dataPrev, prevColor)}${buildLine(dataCurrent, currentColor, dataPrev, prevLabel)}</svg>`;
   const legend = `<div class="legend"><span><i style="background:${currentColor}"></i>${esc(currentLabel)}</span><span><i style="background:${prevColor}"></i>${esc(prevLabel)}</span></div>`;
   return svg + legend;
 }
@@ -420,8 +438,11 @@ function svgGroupedBar(categories, aLabel, aValues, bLabel, bValues, aColor, bCo
     const gx = padL + groupW*i + groupW/2;
     const av = aValues[i]||0, bv = bValues[i]||0;
     const ah = (h-padT-padB) * (av/max), bh = (h-padT-padB) * (bv/max);
-    bars += `<rect x="${(gx-barW-2).toFixed(1)}" y="${(h-padB-bh).toFixed(1)}" width="${barW.toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="${bColor}"/>`;
-    bars += `<rect x="${(gx+2).toFixed(1)}" y="${(h-padB-ah).toFixed(1)}" width="${barW.toFixed(1)}" height="${ah.toFixed(1)}" rx="3" fill="${aColor}"/>`;
+    const pct = bv===0 ? null : ((av-bv)/bv*100);
+    const tipB = `<b>${esc(cat)}</b><br>${esc(bLabel)}：${fmtNum(bv)}`;
+    const tipA = `<b>${esc(cat)}</b><br>${esc(aLabel)}：${fmtNum(av)}` + (pct!==null ? `<br>${esc(bLabel)}比：${pct>0?"+":""}${pct.toFixed(1)}%` : "");
+    bars += `<rect x="${(gx-barW-2).toFixed(1)}" y="${(h-padB-bh).toFixed(1)}" width="${barW.toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="${bColor}" data-tip="${esc(tipB)}"/>`;
+    bars += `<rect x="${(gx+2).toFixed(1)}" y="${(h-padB-ah).toFixed(1)}" width="${barW.toFixed(1)}" height="${ah.toFixed(1)}" rx="3" fill="${aColor}" data-tip="${esc(tipA)}"/>`;
     bars += `<text x="${(gx-barW-2+barW/2).toFixed(1)}" y="${(h-padB-bh-4).toFixed(1)}" font-size="9" text-anchor="middle" fill="currentColor" opacity="0.6">${fmtNum(bv)}</text>`;
     bars += `<text x="${(gx+2+barW/2).toFixed(1)}" y="${(h-padB-ah-4).toFixed(1)}" font-size="9" text-anchor="middle" fill="currentColor" opacity="0.6">${fmtNum(av)}</text>`;
     labels += `<text x="${gx.toFixed(1)}" y="${h-14}" font-size="10" text-anchor="middle" fill="currentColor" opacity="0.7">${esc(cat)}</text>`;
@@ -467,7 +488,8 @@ function svgDonut(title, data, colors){
     const a0 = angle, a1 = angle + frac*360; angle = a1;
     const large = (a1-a0)>180 ? 1 : 0;
     const p0 = polar(cx,cy,r,a0), p1 = polar(cx,cy,r,a1);
-    arcs.push(`<path d="M${cx},${cy} L${p0.x},${p0.y} A${r},${r} 0 ${large} 1 ${p1.x},${p1.y} Z" fill="${colors[i%colors.length]}"/>`);
+    const tipHtml = `<b>${esc(d.name)}</b><br>${d.value}%`;
+    arcs.push(`<path d="M${cx},${cy} L${p0.x},${p0.y} A${r},${r} 0 ${large} 1 ${p1.x},${p1.y} Z" fill="${colors[i%colors.length]}" data-tip="${esc(tipHtml)}"/>`);
   });
   const legend = data.map((d,i) => `<span><i style="background:${colors[i%colors.length]}"></i>${esc(d.name)} ${d.value}%</span>`).join("");
   return `<div class="donut-cell"><div class="dt">${esc(title)}</div>
@@ -482,7 +504,8 @@ function svgHBar(title, items, color){
   const max = Math.max(...sorted.map(s=>s.percent), 1);
   const rows = sorted.map(s => {
     const w = Math.max(2, (s.percent/max)*100);
-    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+    const tipHtml = `<b>${esc(s.label)}</b><br>${s.percent}%`;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px" data-tip="${esc(tipHtml)}">
       <div style="width:64px;font-size:11px;color:var(--ink-soft);flex:none">${esc(s.label)}</div>
       <div style="flex:1;background:var(--chip);border-radius:4px;overflow:hidden"><div style="width:${w}%;background:${color};height:14px"></div></div>
       <div style="width:40px;font-size:11px;text-align:right;flex:none">${s.percent}%</div>

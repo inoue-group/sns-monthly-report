@@ -166,6 +166,9 @@ window.SNS_FIREBASE_CONFIG = {
   .no-print{}
   #printArea{display:none}
 
+  .chart-tooltip{position:fixed; z-index:50; pointer-events:none; background:var(--panel); border:1px solid var(--line-strong); border-radius:8px; padding:6px 10px; font-size:12px; line-height:1.5; box-shadow:var(--shadow); max-width:220px}
+  [data-tip]{cursor:default}
+
   @media (max-width:640px){
     .row{flex-direction:column; align-items:stretch}
     .fld{min-width:0}
@@ -215,6 +218,8 @@ window.SNS_FIREBASE_CONFIG = {
 <main id="app"></main>
 
 <div id="printArea"></div>
+
+<div id="chartTooltip" class="chart-tooltip no-print" hidden></div>
 
 <script>
 "use strict";
