@@ -115,6 +115,19 @@ function wireChartTooltip(){
   });
   document.addEventListener("mouseleave", () => { tip.hidden = true; });
 }
+function wireImageLightbox(){
+  const lb = document.getElementById("imageLightbox");
+  const lbImg = document.getElementById("lightboxImg");
+  document.addEventListener("click", (e) => {
+    const thumb = e.target.closest(".item-thumb");
+    if (thumb){
+      const src = thumb.getAttribute("src");
+      if (src){ lbImg.src = src; lb.hidden = false; }
+      return;
+    }
+    if (!lb.hidden) lb.hidden = true;
+  });
+}
 function fileToDataUrl(file, max, q){
   max = max || 480; q = q || 0.75;
   return new Promise((resolve, reject) => {
@@ -210,6 +223,7 @@ async function boot(){
   document.getElementById("brandHome").onclick = () => navigate("/");
   window.addEventListener("hashchange", syncRouteFromHash);
   wireChartTooltip();
+  wireImageLightbox();
 
   DB.subscribe("brands", async (brands) => {
     if (!brands || brands.length === 0){
@@ -608,7 +622,7 @@ function renderPlatform(){
     </div>`;
   }
 
-  const notesHtml = report.notes ? `<div class="panel"><h2>まとめ・メモ</h2><p style="white-space:pre-wrap; font-size:13px">${esc(report.notes)}</p></div>` : "";
+  const notesHtml = (report.notes || report.assignee) ? `<div class="panel"><h2>まとめ・メモ</h2>${report.assignee?`<p style="font-size:13px;margin-bottom:6px"><b>担当者：</b>${esc(report.assignee)}</p>`:""}<p style="white-space:pre-wrap; font-size:13px">${esc(report.notes||"")}</p></div>` : "";
 
   const formHtml = state.editMode ? renderEditForm(report, isInstagram, isYoutube) : "";
   const viewToggleBtn = `<button id="toggleEdit" class="btn ${state.editMode?"":"primary"} no-print">${state.editMode?"閲覧モードに戻る":"編集する"}</button>`;
@@ -636,11 +650,11 @@ function renderPlatform(){
 
     ${instagramExtras}
 
-    ${notesHtml}
-
     ${formHtml}
 
     ${instagramManagers}
+
+    ${notesHtml}
 
     <div class="no-print" style="margin:14px 0"><button id="pdfBtn" class="btn">PDFで保存</button></div>
   `;
@@ -691,6 +705,7 @@ function renderEditForm(report, isInstagram, isYoutube){
     </div>
     ` : ""}
 
+    <label class="fld" style="margin-bottom:12px; max-width:260px"><span>担当者名</span><input id="f_assignee" value="${esc(report.assignee||"")}"></label>
     <label class="fld" style="margin-bottom:12px"><span>まとめ・メモ</span><textarea id="f_notes">${esc(report.notes||"")}</textarea></label>
     <button type="submit" class="btn primary">保存する</button>
     <span id="formMsg" style="margin-left:10px;font-size:13px"></span>
@@ -833,6 +848,7 @@ async function onSubmitReportForm(e){
     interactions: toNumOrNull(g("f_interactions").value),
     views: toNumOrNull(g("f_views").value),
     notes: g("f_notes").value.trim() || null,
+    assignee: g("f_assignee").value.trim() || null,
     engagementRate: null,
   };
   if (isYoutube) data.likesCount = toNumOrNull(g("f_likes").value);

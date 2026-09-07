@@ -142,8 +142,13 @@ window.SNS_FIREBASE_CONFIG = {
 
   .item-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:12px; margin-bottom:14px}
   .item-card{text-align:center; font-size:12px}
-  .item-thumb{width:100%; aspect-ratio:1/1; border-radius:10px; background:var(--chip); object-fit:cover; display:block; margin-bottom:4px}
+  .item-thumb{width:100%; aspect-ratio:1/1; border-radius:10px; background:var(--chip); object-fit:cover; display:block; margin-bottom:4px; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease}
+  .item-thumb[src]:not([src=""]):hover{transform:translateY(-4px) scale(1.03); box-shadow:0 8px 18px rgba(20,26,38,.22)}
   .item-thumb.tall{aspect-ratio:9/16}
+
+  .lightbox{position:fixed; inset:0; z-index:60; background:rgba(10,12,16,.82); display:flex; align-items:center; justify-content:center; padding:24px; cursor:zoom-out}
+  .lightbox[hidden]{display:none}
+  .lightbox img{max-width:min(90vw,720px); max-height:90vh; border-radius:10px; box-shadow:0 12px 32px rgba(0,0,0,.4)}
   .item-title{font-weight:700}
   .item-sub{color:var(--ink-soft)}
 
@@ -220,6 +225,8 @@ window.SNS_FIREBASE_CONFIG = {
 <div id="printArea"></div>
 
 <div id="chartTooltip" class="chart-tooltip no-print" hidden></div>
+
+<div id="imageLightbox" class="lightbox no-print" hidden><img id="lightboxImg" src="" alt=""></div>
 
 <script>
 "use strict";
