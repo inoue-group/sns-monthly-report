@@ -65,6 +65,31 @@ function resolveEngagementRate(r){
   return (r.interactions / r.views) * 100;
 }
 function previousMonthOf(y,m){ return m===1 ? {year:y-1, month:12} : {year:y, month:m-1}; }
+function ymStr(y,m){ return y + "-" + String(m).padStart(2,"0"); }
+function parseYm(s){ const [y,m] = String(s).split("-").map(Number); return {year:y, month:m}; }
+function defaultTrendRange(){
+  const endY = state.year, endM = state.month;
+  let sy = endY, sm = endM - 11;
+  while (sm <= 0){ sm += 12; sy -= 1; }
+  return { start: ymStr(sy, sm), end: ymStr(endY, endM) };
+}
+function monthRange(startYm, endYm){
+  let s = parseYm(startYm), e = parseYm(endYm);
+  if (s.year > e.year || (s.year===e.year && s.month>e.month)){ const t=s; s=e; e=t; }
+  const out = [];
+  let y=s.year, m=s.month;
+  while ((y < e.year || (y===e.year && m<=e.month)) && out.length < 60){
+    out.push({year:y, month:m});
+    m++; if (m>12){ m=1; y++; }
+  }
+  return out;
+}
+function seriesFor(months, field){
+  return months.map(({year,month}) => {
+    const r = state.reports.find(x => x.year===year && x.month===month);
+    return { label: year+"/"+month, value: r ? (r[field] ?? null) : null };
+  });
+}
 function deltaBadgeHtml(delta, digits){
   if (delta.percent===null) return `<span class="delta none">前月データなし</span>`;
   const cls = delta.percent>0 ? "up" : delta.percent<0 ? "down" : "flat";
@@ -121,6 +146,9 @@ const state = {
   linkClicks: [],
   postHighlightsUnsub: null,
   postHighlights: [],
+  trendStart: null,      // "YYYY-MM"
+  trendEnd: null,        // "YYYY-MM"
+  trendFull: false,      // true = 全期間1本線モード
 };
 
 /* =========================================================================
@@ -160,6 +188,7 @@ function teardownDetailSubs(){
   if (state.linkClicksUnsub){ state.linkClicksUnsub(); state.linkClicksUnsub = null; }
   if (state.postHighlightsUnsub){ state.postHighlightsUnsub(); state.postHighlightsUnsub = null; }
   state.reports = []; state.linkClicks = []; state.postHighlights = [];
+  state.trendStart = null; state.trendEnd = null; state.trendFull = false;
 }
 
 /* =========================================================================
@@ -349,6 +378,38 @@ function svgLineChart(data, color, yTickStep){
   return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:180px">${gridLines}${labels}<path d="${path}" fill="none" stroke="${color}" stroke-width="2"/>${dots}</svg>`;
 }
 
+function svgYoYLineChart(dataCurrent, dataPrev, currentColor, prevColor, currentLabel, prevLabel, yTickStep){
+  const w=560, h=180, padL=44, padR=10, padT=10, padB=22;
+  const allValues = [...dataCurrent, ...dataPrev].map(d=>d.value).filter(v=>v!==null && v!==undefined);
+  if (allValues.length===0) return `<div style="height:180px;display:flex;align-items:center;justify-content:center;color:var(--ink-soft)">データがありません</div>`;
+  let min = Math.min(...allValues), max = Math.max(...allValues);
+  min = Math.floor(min*0.95); max = Math.ceil(max*1.05);
+  if (yTickStep){ min = Math.floor(min/yTickStep)*yTickStep; max = Math.ceil(max/yTickStep)*yTickStep; }
+  if (max===min) max = min+1;
+  const n = dataCurrent.length;
+  const x = i => padL + (w-padL-padR) * (n<=1?0:i/(n-1));
+  const y = v => padT + (h-padT-padB) * (1 - (v-min)/(max-min));
+  function buildLine(data, color){
+    let path = "", dots = "";
+    data.forEach((d,i) => {
+      if (d.value===null || d.value===undefined) return;
+      const px=x(i), py=y(d.value);
+      path += (path===""?"M":"L") + px.toFixed(1) + " " + py.toFixed(1) + " ";
+      dots += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3.5" fill="${color}"/>`;
+    });
+    return `<path d="${path}" fill="none" stroke="${color}" stroke-width="2"/>${dots}`;
+  }
+  const gridLines = [0,0.25,0.5,0.75,1].map(t => {
+    const gy = padT + (h-padT-padB)*t;
+    const val = max - (max-min)*t;
+    return `<line x1="${padL}" y1="${gy}" x2="${w-padR}" y2="${gy}" stroke="currentColor" stroke-opacity="0.08"/><text x="${padL-6}" y="${gy+3}" font-size="9" text-anchor="end" fill="currentColor" opacity="0.5">${fmtNum(Math.round(val))}</text>`;
+  }).join("");
+  const labels = dataCurrent.map((d,i) => (i%Math.ceil(n/6||1)===0) ? `<text x="${x(i)}" y="${h-6}" font-size="9" text-anchor="middle" fill="currentColor" opacity="0.5">${esc(d.label)}</text>` : "").join("");
+  const svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:180px">${gridLines}${labels}${buildLine(dataPrev, prevColor)}${buildLine(dataCurrent, currentColor)}</svg>`;
+  const legend = `<div class="legend"><span><i style="background:${currentColor}"></i>${esc(currentLabel)}</span><span><i style="background:${prevColor}"></i>${esc(prevLabel)}</span></div>`;
+  return svg + legend;
+}
+
 function svgGroupedBar(categories, aLabel, aValues, bLabel, bValues, aColor, bColor){
   const w=560, h=200, padL=34, padR=10, padT=10, padB=34;
   const max = Math.max(1, ...aValues, ...bValues);
@@ -470,6 +531,26 @@ function renderPlatform(){
   const followersTrend = state.reports.map(r => ({ label:r.year+"/"+r.month, value:r.followers??null }));
   const viewsTrend = state.reports.map(r => ({ label:r.year+"/"+r.month, value:r.views??null }));
 
+  if (!state.trendStart || !state.trendEnd){
+    const def = defaultTrendRange();
+    state.trendStart = def.start; state.trendEnd = def.end;
+  }
+  const trendMonths = monthRange(state.trendStart, state.trendEnd);
+  const trendMonthsPrev = trendMonths.map(({year,month}) => ({year:year-1, month}));
+  const trendControlsHtml = `<div class="row no-print" style="margin-bottom:8px; align-items:flex-end">
+    ${!state.trendFull ? `
+      <label class="fld" style="min-width:150px"><span>開始月</span><input type="month" id="trendStart" value="${esc(state.trendStart)}"></label>
+      <label class="fld" style="min-width:150px"><span>終了月</span><input type="month" id="trendEnd" value="${esc(state.trendEnd)}"></label>
+    ` : ""}
+    <button id="trendFullToggle" class="btn sm" type="button">${state.trendFull ? "期間比較に戻る" : "全体を表示"}</button>
+  </div>`;
+  const followersChart = state.trendFull
+    ? svgLineChart(followersTrend, brand.color, 100)
+    : svgYoYLineChart(seriesFor(trendMonths,"followers"), seriesFor(trendMonthsPrev,"followers"), brand.color, "#cbd5e1", "当期", "前年同期間", 100);
+  const viewsChart = state.trendFull
+    ? svgLineChart(viewsTrend, brand.color)
+    : svgYoYLineChart(seriesFor(trendMonths,"views"), seriesFor(trendMonthsPrev,"views"), brand.color, "#cbd5e1", "当期", "前年同期間");
+
   const kpis = [
     { label: isYoutube?"チャンネル登録者数":"フォロワー数", delta: deltas.followers },
     { label: isYoutube?"動画投稿数":"投稿数", delta: deltas.postsCount },
@@ -524,9 +605,10 @@ function renderPlatform(){
 
     <div class="kpi-grid" style="margin-bottom:16px">${kpiHtml}</div>
 
+    ${trendControlsHtml}
     <div class="chart-grid" style="margin-bottom:14px">
-      <div class="chart-box"><div class="ct-title">フォロワー数の推移</div>${svgLineChart(followersTrend, brand.color, 100)}</div>
-      <div class="chart-box"><div class="ct-title">総閲覧数の推移</div>${svgLineChart(viewsTrend, brand.color)}</div>
+      <div class="chart-box"><div class="ct-title">フォロワー数の推移</div>${followersChart}</div>
+      <div class="chart-box"><div class="ct-title">総閲覧数の推移</div>${viewsChart}</div>
     </div>
 
     ${instagramExtras}
@@ -535,9 +617,9 @@ function renderPlatform(){
 
     ${formHtml}
 
-    <div class="no-print" style="margin:14px 0"><button id="pdfBtn" class="btn">PDFで保存</button></div>
-
     ${instagramManagers}
+
+    <div class="no-print" style="margin:14px 0"><button id="pdfBtn" class="btn">PDFで保存</button></div>
   `;
 }
 
@@ -675,6 +757,13 @@ function wireView(){
   if (state.view === "platform"){
     const ms = document.getElementById("monthSelect");
     if (ms) ms.onchange = () => { const [y,m] = ms.value.split("-"); navigate(`/b/${state.brandSlug}/${state.platformSlug}?y=${y}&m=${m}${state.editMode?"&edit=1":""}`); };
+
+    const trendStartEl = document.getElementById("trendStart");
+    if (trendStartEl) trendStartEl.onchange = () => { state.trendStart = trendStartEl.value; render(); };
+    const trendEndEl = document.getElementById("trendEnd");
+    if (trendEndEl) trendEndEl.onchange = () => { state.trendEnd = trendEndEl.value; render(); };
+    const trendFullToggle = document.getElementById("trendFullToggle");
+    if (trendFullToggle) trendFullToggle.onclick = () => { state.trendFull = !state.trendFull; render(); };
 
     const toggle = document.getElementById("toggleEdit");
     if (toggle) toggle.onclick = () => navigate(`/b/${state.brandSlug}/${state.platformSlug}?y=${state.year}&m=${state.month}${state.editMode?"":"&edit=1"}`);
