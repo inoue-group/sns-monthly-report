@@ -597,17 +597,17 @@ function renderLinkClicks(){
   const cards = items.map(it => `<div class="item-card">
     <img class="item-thumb tall" src="${it.imageData||''}" alt="${esc(it.title)}">
     <div class="item-title">${esc(it.title)}</div><div class="item-sub">${it.clickCount}件</div>
-    <button class="no-print btn sm danger" data-del-linkclick="${it.id}">削除</button>
+    ${state.editMode ? `<button class="no-print btn sm danger" data-del-linkclick="${it.id}">削除</button>` : ""}
   </div>`).join("");
   return `<div class="panel">
     <h2>完成見学会などイベントのリンククリック数</h2>
     <div class="item-grid">${cards || `<p style="color:var(--ink-soft);font-size:13px">まだ登録がありません。</p>`}</div>
-    <form id="linkClickForm" class="row no-print">
+    ${state.editMode ? `<form id="linkClickForm" class="row no-print">
       <label class="fld"><span>タイトル</span><input id="lc_title" placeholder="例：鈴木様邸"></label>
       <label class="fld" style="min-width:90px"><span>クリック数</span><input type="number" id="lc_count"></label>
       <label class="fld"><span>画像</span><input type="file" accept="image/*" id="lc_image"></label>
       <button type="submit" class="btn">+ 追加</button>
-    </form>
+    </form>` : ""}
   </div>`;
 }
 
@@ -621,19 +621,19 @@ function renderPostHighlights(){
       <div class="item-sub">閲覧数 ${fmtNum(it.views)}</div>
       <div class="item-sub">Int. ${fmtNum(it.interactions)}</div>
       <div class="item-sub">Eng率 ${eng===null?"ー":eng.toFixed(1)+"%"}</div>
-      <button class="no-print btn sm danger" data-del-posthighlight="${it.id}">削除</button>
+      ${state.editMode ? `<button class="no-print btn sm danger" data-del-posthighlight="${it.id}">削除</button>` : ""}
     </div>`;
   }).join("");
   return `<div class="panel">
     <h2>今月の投稿</h2>
     <div class="item-grid">${cards || `<p style="color:var(--ink-soft);font-size:13px">まだ登録がありません。</p>`}</div>
-    <form id="postHighlightForm" class="row no-print">
+    ${state.editMode ? `<form id="postHighlightForm" class="row no-print">
       <label class="fld"><span>タイトル</span><input id="ph_title" placeholder="例：Living"></label>
       <label class="fld" style="min-width:90px"><span>閲覧数</span><input type="number" id="ph_views"></label>
       <label class="fld" style="min-width:90px"><span>インタラクション数</span><input type="number" id="ph_interactions"></label>
       <label class="fld"><span>画像</span><input type="file" accept="image/*" id="ph_image"></label>
       <button type="submit" class="btn">+ 追加</button>
-    </form>
+    </form>` : ""}
   </div>`;
 }
 
