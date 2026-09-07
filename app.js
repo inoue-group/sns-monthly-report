@@ -499,6 +499,8 @@ function renderPlatform(){
     </div>`;
   }
 
+  const notesHtml = report.notes ? `<div class="panel"><h2>まとめ・メモ</h2><p style="white-space:pre-wrap; font-size:13px">${esc(report.notes)}</p></div>` : "";
+
   const formHtml = state.editMode ? renderEditForm(report, isInstagram, isYoutube) : "";
   const viewToggleBtn = `<button id="toggleEdit" class="btn ${state.editMode?"":"primary"} no-print">${state.editMode?"閲覧モードに戻る":"編集する"}</button>`;
 
@@ -523,6 +525,8 @@ function renderPlatform(){
     </div>
 
     ${instagramExtras}
+
+    ${notesHtml}
 
     ${formHtml}
 
@@ -769,43 +773,10 @@ async function ensureReportExists(){
   if (!currentReport()) await DB.merge(reportPath(), { platform: platformFromSlug(state.platformSlug), year: state.year, month: state.month });
 }
 
-/* ---- PDF出力（印刷専用エリアを組み立ててから印刷） ---- */
+/* ---- PDF出力（画面表示中の内容をそのまま印刷エリアに複製する） ---- */
 function printReport(){
-  const brand = getBrand();
-  const platform = platformFromSlug(state.platformSlug);
-  const meta = PLATFORM_META[platform];
-  const report = currentReport() || {};
-  const prev = previousReport();
-  const eng = resolveEngagementRate(report);
-  const area = document.getElementById("printArea");
-  area.innerHTML = `
-    <div class="p-h1">${esc(brand.name)} / ${meta.label}</div>
-    <div class="p-h2">${state.year}年${MONTH_LABELS[state.month-1]}の実績${prev?`（前月：${prev.year}年${MONTH_LABELS[prev.month-1]}と比較）`:""}</div>
-    <div class="p-kpis">
-      <div class="p-kpi"><div class="l">フォロワー数</div><div class="v">${fmtNum(report.followers)}</div></div>
-      <div class="p-kpi"><div class="l">投稿数</div><div class="v">${fmtNum(report.postsCount)}</div></div>
-      <div class="p-kpi"><div class="l">インタラクション数</div><div class="v">${fmtNum(report.interactions)}</div></div>
-      <div class="p-kpi"><div class="l">総閲覧数</div><div class="v">${fmtNum(report.views)}</div></div>
-      <div class="p-kpi"><div class="l">エンゲージメント率</div><div class="v">${eng===null?"ー":eng.toFixed(2)+"%"}</div></div>
-    </div>
-    ${printItemGridHtml("今月の投稿", state.postHighlights.map(it => {
-      const eng = it.views ? (it.interactions/it.views*100) : null;
-      return { image: it.imageData, title: it.title, sub: `閲覧数 ${fmtNum(it.views)}／Int. ${fmtNum(it.interactions)}／Eng率 ${eng===null?"ー":eng.toFixed(1)+"%"}`, tall:false };
-    }))}
-    ${printItemGridHtml("完成見学会などイベントのリンククリック数", [...state.linkClicks].sort((a,b)=>b.clickCount-a.clickCount).map(it => ({ image: it.imageData, title: it.title, sub: `${it.clickCount}件`, tall:true })))}
-    <div class="p-section"><h3>まとめ・メモ</h3><div>${esc(report.notes||"（記載なし）")}</div></div>
-  `;
+  document.getElementById("printArea").innerHTML = document.getElementById("app").innerHTML;
   window.print();
-}
-
-function printItemGridHtml(title, items){
-  if (!items || items.length===0) return "";
-  const cards = items.map(it => `<div class="p-card">
-      ${it.image ? `<img class="${it.tall?"tall":""}" src="${it.image}" alt="${esc(it.title)}">` : `<img alt="" style="background:#f2f2f2">`}
-      <div class="t">${esc(it.title)}</div>
-      <div class="s">${esc(it.sub)}</div>
-    </div>`).join("");
-  return `<div class="p-section"><h3>${esc(title)}</h3><div class="p-grid">${cards}</div></div>`;
 }
 
 boot();

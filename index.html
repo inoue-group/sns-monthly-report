@@ -173,25 +173,17 @@ window.SNS_FIREBASE_CONFIG = {
   }
 
   @media print{
-    @page{ size:A4 portrait; margin:12mm }
+    @page{ size:A4 landscape; margin:12mm }
     html,body{ background:#fff }
     body > *:not(#printArea){ display:none !important }
     .fab-video{ display:none !important }
-    #printArea{ display:block !important; color:#000 }
-    #printArea .p-h1{ font-size:18px; font-weight:900; margin-bottom:2px }
-    #printArea .p-h2{ font-size:12px; color:#555; margin-bottom:14px }
-    #printArea .p-kpis{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:14px }
-    #printArea .p-kpi{ border:1px solid #ccc; border-radius:6px; padding:8px }
-    #printArea .p-kpi .l{ font-size:9px; color:#666 }
-    #printArea .p-kpi .v{ font-size:15px; font-weight:800 }
-    #printArea .p-section{ margin-bottom:14px; break-inside:avoid }
-    #printArea .p-section h3{ font-size:12px; border-left:3px solid #999; padding-left:6px; margin-bottom:6px }
-    #printArea .p-grid{ display:grid; grid-template-columns:repeat(6,1fr); gap:6px }
-    #printArea .p-card{ border:1px solid #ccc; border-radius:4px; padding:4px; text-align:center; break-inside:avoid }
-    #printArea .p-card img{ width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:3px; display:block; background:#f2f2f2 }
-    #printArea .p-card img.tall{ aspect-ratio:9/16 }
-    #printArea .p-card .t{ font-size:8px; font-weight:700; margin-top:3px; line-height:1.2 }
-    #printArea .p-card .s{ font-size:7.5px; color:#555 }
+    #printArea{
+      display:block !important; color:#000;
+      --bg:#fff; --panel:#fff; --panel-2:#fff; --ink:#000; --ink-soft:#444;
+      --line:#ccc; --line-strong:#999; --chip:#eee; --accent-soft:#fff; --shadow:none;
+    }
+    #printArea .no-print{ display:none !important }
+    #printArea .panel, #printArea .kpi, #printArea .chart-box, #printArea .item-card, #printArea .donut-cell{ break-inside:avoid }
   }
 </style>
 </head>
