@@ -481,7 +481,7 @@ function svgEngagementCircles(engRate, interactions, views, color){
       </div>
       <div style="margin-top:2px">${deltaBadgeHtml(r.delta)}</div>
     </div>`).join("");
-  return `<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+  return `<div style="display:flex;gap:20px;align-items:center;justify-content:center;flex-wrap:wrap">
     <svg width="160" height="180" viewBox="0 0 160 180">
       <circle cx="75" cy="90" r="72" fill="${color}" opacity="0.18"/>
       <circle cx="75" cy="90" r="48" fill="${color}" opacity="0.45"/>
@@ -490,7 +490,7 @@ function svgEngagementCircles(engRate, interactions, views, color){
         <path d="M121 35 L155 20" /><path d="M123 90 L155 90" /><path d="M90 108 L155 160" />
       </g>
     </svg>
-    <div style="flex:1;min-width:200px">${rowsHtml}</div>
+    <div style="min-width:200px">${rowsHtml}</div>
   </div>`;
 }
 
