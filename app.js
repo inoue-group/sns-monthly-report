@@ -172,6 +172,7 @@ const state = {
   trendStart: null,      // "YYYY-MM"
   trendEnd: null,        // "YYYY-MM"
   trendFull: false,      // true = 全期間1本線モード
+  glossaryEditId: null,
 };
 
 /* =========================================================================
@@ -241,7 +242,7 @@ async function boot(){
 
   DB.subscribe("glossary", async (items) => {
     if (!items || items.length === 0){
-      for (const g of SEED_GLOSSARY){ await DB.add("glossary", g); }
+      for (let i=0;i<SEED_GLOSSARY.length;i++){ await DB.set("glossary/seed_"+i, SEED_GLOSSARY[i]); }
       return;
     }
     state.glossary = items;
@@ -770,7 +771,25 @@ function renderGlossaryPage(){
   });
   const rows = groups.map(g => `<div class="glossary-row">
     <div class="glossary-idx">${esc(g.key)}</div>
-    <div class="glossary-list">${g.items.map(t=>`<div class="glossary-item"><b>${esc(t.term)}</b><p>${esc(t.description)}</p></div>`).join("")}</div>
+    <div class="glossary-list">${g.items.map(t => t.id === state.glossaryEditId ? `
+      <div class="glossary-item">
+        <div class="row no-print">
+          <input id="ge_term_${t.id}" value="${esc(t.term)}" placeholder="用語">
+          <input id="ge_reading_${t.id}" value="${esc(t.reading)}" placeholder="読み（ひらがな）">
+          <input id="ge_description_${t.id}" value="${esc(t.description)}" placeholder="説明" style="flex:2">
+          <button class="btn sm primary" data-save-glossary="${t.id}" type="button">保存</button>
+          <button class="btn sm" data-cancel-glossary="${t.id}" type="button">キャンセル</button>
+        </div>
+      </div>
+    ` : `
+      <div class="glossary-item">
+        <b>${esc(t.term)}</b><p>${esc(t.description)}</p>
+        <div class="no-print" style="margin-top:6px">
+          <button class="btn sm" data-edit-glossary="${t.id}" type="button">編集</button>
+          <button class="btn sm danger" data-del-glossary="${t.id}" type="button">削除</button>
+        </div>
+      </div>
+    `).join("")}</div>
   </div>`).join("");
 
   return `
@@ -833,6 +852,21 @@ function wireView(){
       await DB.add("glossary", { term, reading, description });
       gForm.reset();
     };
+    document.querySelectorAll("[data-edit-glossary]").forEach(btn => btn.onclick = () => { state.glossaryEditId = btn.dataset.editGlossary; render(); });
+    document.querySelectorAll("[data-cancel-glossary]").forEach(btn => btn.onclick = () => { state.glossaryEditId = null; render(); });
+    document.querySelectorAll("[data-save-glossary]").forEach(btn => btn.onclick = async () => {
+      const id = btn.dataset.saveGlossary;
+      const term = document.getElementById("ge_term_"+id).value.trim();
+      const reading = document.getElementById("ge_reading_"+id).value.trim();
+      const description = document.getElementById("ge_description_"+id).value.trim();
+      if (!term || !reading || !description) return;
+      await DB.merge("glossary/"+id, { term, reading, description });
+      state.glossaryEditId = null;
+    });
+    document.querySelectorAll("[data-del-glossary]").forEach(btn => btn.onclick = async () => {
+      if (!confirm("この用語を削除しますか？")) return;
+      await DB.remove("glossary/"+btn.dataset.delGlossary);
+    });
   }
 }
 
